@@ -2,153 +2,126 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Admin collection - allow admins to read their own document and query by email
-    match /admins/{document=**} {
-      allow read: if true; // Allow querying by email
-      allow write: if true; // Allow admin operations
+
+    // ===== Admins: Only authenticated admins may read/write their own doc =====
+    match /admins/{adminId} {
+      allow read, write: if request.auth != null && request.auth.token.admin == true && request.auth.uid == adminId;
     }
 
-    // Malls collection - allow authenticated users to read (for now, admin only via logic)
+    // ===== Malls =====
     match /malls/{mallId} {
-      allow read: if true; // Allow reading malls list
-      allow create, update, delete: if true; // Allow manager operations
-      
-      // Products subcollection
-      match /products/{product=**} {
+      // Anyone can read public mall info
+      allow read: if true;
+      // Only authenticated admins or designated mall managers can modify
+      allow create, update, delete: if request.auth != null && (
+          request.auth.token.admin == true ||
+          request.auth.token.manager_mall_id == mallId
+        );
+
+      // ===== Products =====
+      match /products/{productId} {
         allow read: if true;
-        allow write: if true; // Allow manager to manage products
+        allow write: if request.auth != null && (
+          request.auth.token.admin == true ||
+          request.auth.token.manager_mall_id == mallId
+        );
       }
 
-      // Barcodes subcollection
-      match /barcodes/{barcode=**} {
+      // ===== Barcodes =====
+      match /barcodes/{barcodeId} {
         allow read: if true;
-        allow write: if true; // Allow manager to manage barcodes
+        allow write: if request.auth != null && (
+          request.auth.token.admin == true ||
+          request.auth.token.manager_mall_id == mallId
+        );
       }
 
-      // Payments subcollection
-      match /payments/{payment=**} {
-        allow read: if true;
-        allow write: if true; // Allow writing payment records during checkout
+      // ===== Payments & Bills (checkout data) =====
+      match /payments/{paymentId}, /bills/{billId} {
+        allow read, write: if request.auth != null && (
+          request.auth.token.admin == true ||
+          request.auth.token.manager_mall_id == mallId
+        );
       }
 
-      // Bills subcollection (checkout history)
-      match /bills/{bill=**} {
-        allow read: if true;
-        allow write: if true; // Allow saving bill records during checkout
+      // ===== Managers (for this mall) =====
+      match /managers/{managerId} {
+        allow read: if request.auth != null && (
+          request.auth.token.admin == true ||
+          request.auth.token.manager_mall_id == mallId
+        );
+        allow write: if request.auth != null && request.auth.token.admin == true;
       }
 
-      // Managers subcollection
-      match /managers/{manager=**} {
+      // ===== Promotions =====
+      match /promotions/{promotionId} {
         allow read: if true;
-        allow write: if true; // Allow manager login to update lastLoginAt
+        allow write: if request.auth != null && (
+          request.auth.token.admin == true ||
+          request.auth.token.manager_mall_id == mallId
+        );
       }
 
-      // Promotions subcollection
-      match /promotions/{promotion=**} {
-        allow read: if true;
-        allow write: if true; // Allow manager to manage promotions
-      }
-
-      // Staff activity subcollection
-      match /staff_activity/{activity=**} {
-        allow read: if true;
-        allow write: if true; // Allow manager to log activities
+      // ===== Staff Activity =====
+      match /staff_activity/{activityId} {
+        allow read, write: if request.auth != null && (
+          request.auth.token.admin == true ||
+          request.auth.token.manager_mall_id == mallId
+        );
       }
     }
 
-    // Mall subscriptions
-    match /mall_subscriptions/{document=**} {
-      allow read: if true;
-      allow write: if true; // Allow admin to manage subscriptions
+    // ===== Mall subscriptions: Only admins ====
+    match /mall_subscriptions/{subId} {
+      allow read, write: if request.auth != null && request.auth.token.admin == true;
     }
 
-    // Managers collection
-    match /managers/{document=**} {
-      allow read: if true;
-      allow write: if true; // Allow admin to manage managers
+    // ===== Managers and Manager Index: Admins only =====
+    match /managers/{managerId}, /manager_index/{managerIdxId} {
+      allow read, write: if request.auth != null && request.auth.token.admin == true;
     }
 
-    // Manager index
-    match /manager_index/{document=**} {
+    // ===== Announcements (public read, admin post only) =====
+    match /announcements/{announcementId} {
       allow read: if true;
-      allow write: if true; // Allow manager login to update lastLoginAt
+      allow create: if request.auth != null && request.auth.token.admin == true;
+      allow update, delete: if false;
     }
 
-    // Announcements
-    match /announcements/{document=**} {
-      allow read: if true;
-      allow create: if true; // Admin can create
-      allow write: if false;
-    }
-
-    // Support requests
-    match /support_requests/{document=**} {
-      allow read: if true;
-      allow create: if true;
-      allow update: if true;
+    // ===== Support requests (users create/see their own) =====
+    match /support_requests/{requestId} {
+      allow create: if request.auth != null;
+      allow read, update: if request.auth != null && request.auth.uid == resource.data.uid;
       allow delete: if false;
     }
 
-    // Users collection
+    // ===== Users: Can only access/change own profile & subcollections =====
     match /users/{uid} {
-      allow read, write: if request.auth.uid == uid;
-      
-      match /bills/{bill=**} {
-        allow read, write: if request.auth.uid == uid || request.auth == null; // Allow unauthenticated checkout history
-      }
+      allow read, write: if request.auth != null && request.auth.uid == uid;
 
-      match /payments/{payment=**} {
-        allow read, write: if request.auth.uid == uid || request.auth == null; // Allow unauthenticated checkout history
+      // Allow user to view and store their own bills/payments.
+      match /bills/{billId}, /payments/{paymentId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
       }
     }
 
-    // Other collections used by the system
-    match /announcements/{document=**} {
+    // ===== OTP and password reset (for signup/recovery flows) =====
+    match /email_otp_signup/{otpId}, /phone_otp/{otpId}, /password_reset_otp/{otpId} {
+      allow read, write: if true; // Consider restricting by request time or caller if possible
+    }
+
+    // ===== Read-only collections for catalog/info =====
+    match /barcodes/{barcodeId}, /bills/{billId}, /products/{productId}, /promotions/{promotionId}, /staff_activity/{activityId} {
       allow read: if true;
+      allow write: if false;
     }
 
-    match /barcodes/{document=**} {
-      allow read: if true;
+    // ===== For testing only: never allow in prod =====
+    match /_test/{docId} {
+      allow read, write: if request.auth != null && request.auth.token.admin == true;
     }
 
-    match /bills/{document=**} {
-      allow read: if true;
-      allow write: if true; // Allow saving bill records
-    }
-
-    match /email_otp_signup/{document=**} {
-      allow read, write: if true; // Needed for signup
-    }
-
-    match /phone_otp/{document=**} {
-      allow read, write: if true; // Needed for OTP verification
-    }
-
-    match /password_reset_otp/{document=**} {
-      allow read, write: if true; // Needed for password reset
-    }
-
-    match /payments/{document=**} {
-      allow read: if true;
-    }
-
-    match /products/{document=**} {
-      allow read: if true;
-    }
-
-    match /promotions/{document=**} {
-      allow read: if true;
-    }
-
-    match /staff_activity/{document=**} {
-      allow read: if true;
-    }
-
-    match /_test/{document=**} {
-      allow read, write: if true; // For testing
-    }
-
-    // Deny everything else
+    // ===== Default deny all =====
     match /{document=**} {
       allow read, write: if false;
     }
