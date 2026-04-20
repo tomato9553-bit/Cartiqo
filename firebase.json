@@ -1,4 +1,5 @@
 {
+  // ----- Custom section for team tooling, not used by Firebase CLI -----
   "flutter": {
     "platforms": {
       "android": {
@@ -22,10 +23,13 @@
       }
     }
   },
+
+  // ----- Firebase Configuration -----
   "functions": {
     "source": "functions",
     "codebase": "default",
     "runtime": "nodejs20"
+    // If needed: "region": "us-central1"
   },
   "firestore": {
     "rules": "firestore.rules"
@@ -35,7 +39,8 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "**/test/**"
     ],
     "headers": [
       {
@@ -48,20 +53,20 @@
         ]
       },
       {
-        "source": "/flutter_bootstrap.js",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache, no-store, must-revalidate"
-          }
-        ]
-      },
-      {
         "source": "/main.dart.js",
         "headers": [
           {
             "key": "Cache-Control",
-            "value": "no-cache, no-store, must-revalidate"
+            "value": "public,max-age=31536000,immutable"
+          }
+        ]
+      },
+      {
+        "source": "/flutter_bootstrap.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public,max-age=31536000,immutable"
           }
         ]
       },
@@ -70,7 +75,7 @@
         "headers": [
           {
             "key": "Cache-Control",
-            "value": "no-cache, no-store, must-revalidate"
+            "value": "public,max-age=86400"
           }
         ]
       }
@@ -80,6 +85,13 @@
         "source": "**",
         "destination": "/index.html"
       }
-    ]
+    ],
+    "errorPage": "404.html"
+  },
+  // ----- Local Emulator Suite -----
+  "emulators": {
+    "functions": { "port": 5001 },
+    "firestore": { "port": 8080 },
+    "hosting": { "port": 5000 }
   }
 }
