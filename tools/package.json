@@ -1,16 +1,39 @@
 {
   "name": "tools",
   "version": "1.0.0",
-  "description": "",
+  "description": "Tools package for Cartiqo project – utilities and helpers used in the Cart management system for malls.",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "type": "commonjs",
+  "scripts": {
+    "test": "echo \"No tests yet\" && exit 0",
+    "start": "node index.js",
+    "lint": "eslint ."
+  },
+  "keywords": [
+    "cart",
+    "management",
+    "tools",
+    "firebase",
+    "mall",
+    "utilities"
+  ],
+  "author": "Your Name <your.email@example.com>",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tomato9553-bit/Cartiqo.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tomato9553-bit/Cartiqo/issues"
+  },
+  "homepage": "https://github.com/tomato9553-bit/Cartiqo#readme",
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "dependencies": {
     "firebase-admin": "^13.7.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0"
   }
 }
